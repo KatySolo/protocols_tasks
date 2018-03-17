@@ -4,24 +4,22 @@ import time
 import re
 import socket
 import ipwhois
+import sys
 
 whois_databases = ["ripe","afrinic","apnic","arin","lacnic"]
 
-user_input = "urfu.ru"
+#
 
 
-def get_info():
+def get_info(user_input):
     p = Popen(['traceroute', user_input], stdout=PIPE)
     while True:
         line = p.stdout.readline()
+        if line.endswith(b"* * *\n"):
+            break
         get_ripe_info(str(line))
         if not line:
             break
-
-    # with open('temp.txt','w',encoding='utf-8') as out:
-    #     subprocess.run(["traceroute",user_input],stdout=out)
-
-
 
 def get_ripe_info(line):
     num = re.findall('\d+',line)[0]
@@ -45,6 +43,8 @@ def get_ripe_info(line):
         else:
            final_str += ' ---'
         print (final_str)
-# read_info()
-get_info()
 
+
+if __name__ == "__main__":
+    user_input = sys.argv[1]
+    get_info(user_input)
