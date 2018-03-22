@@ -1,48 +1,36 @@
-from subprocess import PIPE, STDOUT, Popen, run
-import threading
-import time
+import json
 import re
-import socket
-import ipwhois
 import sys
+from subprocess import PIPE, Popen
 
-whois_databases = ["ripe","afrinic","apnic","arin","lacnic"]
+import requests
 
-#
+
+def get_info_ip(line):
+    ip_pattern = re.compile(r"[0-9]+(?:\.[0-9]+){3}")
+    ip_addr = re.findall(ip_pattern, line)
+    num = str(line)[:4]
+    if ip_addr != []:
+        response = requests.get("http://ip-api.com/json/" + ip_addr[0])
+        answer = json.loads(response.content)
+        if (answer['status'] == 'success'):
+            as_num = re.findall(r'AS[0-9]+', answer['as'])[0]
+            country = answer['country']
+            city = answer['city']
+            print(num, ip_addr[0], city + ',' + country, as_num)
+        else:
+            print(num, ip_addr[0], 'None')
 
 
 def get_info(user_input):
-    p = Popen(['traceroute', user_input], stdout=PIPE)
+    p = Popen(['traceroute', '-w', '5', user_input], stdout=PIPE)
     while True:
         line = p.stdout.readline()
         if line.endswith(b"* * *\n"):
             break
-        get_ripe_info(str(line))
+        get_info_ip(str(line))
         if not line:
             break
-
-def get_ripe_info(line):
-    num = re.findall('\d+',line)[0]
-    ip_pattern = re.compile(r"[0-9]+(?:\.[0-9]+){3}")
-    ip_addr = re.findall(ip_pattern, line)
-    if ip_addr != []:
-        ip_addr_bytes = bytes(ip_addr[0].encode())
-        a = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        a.connect(("whois.ripe.net",43))
-        a.send(ip_addr_bytes+b'\n')
-        page = b""
-        while 1:
-            data = a.recv(2048)
-            if not data:
-                break
-            page = page + data
-        final_str = num +' '+ip_addr[0]
-        as_num = re.findall(r'AS[0-9]+',str(page))
-        if as_num != []:
-           final_str += ' '+as_num[0]
-        else:
-           final_str += ' ---'
-        print (final_str)
 
 
 if __name__ == "__main__":
